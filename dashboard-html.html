@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kuro kainos</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+--bg0:#04060c;--bg1:#0a0e1a;--bg2:#111827;--bg3:#1a2332;--bg4:#1e293b;
+--brd:#1e293b;--brd2:#334155;
+--t1:#f1f5f9;--t2:#e2e8f0;--t3:#94a3b8;--t4:#64748b;--t5:#475569;
+--blue:#3b82f6;--cyan:#06b6d4;--orange:#f97316;--purple:#a855f7;
+--green:#22c55e;--red:#ef4444;--amber:#f59e0b;--teal:#2dd4bf;
+--F:'Outfit',sans-serif;--M:'IBM Plex Mono',monospace;
+}
+[data-theme="light"]{
+--bg0:#f0f2f5;--bg1:#ffffff;--bg2:#ffffff;--bg3:#f8fafc;--bg4:#e2e8f0;
+--brd:#e2e8f0;--brd2:#cbd5e1;
+--t1:#0f172a;--t2:#1e293b;--t3:#475569;--t4:#64748b;--t5:#94a3b8;
+--blue:#2563eb;--cyan:#0891b2;--orange:#ea580c;--purple:#7c3aed;
+--green:#16a34a;--red:#dc2626;--amber:#d97706;--teal:#0d9488;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--F);background:var(--bg0);color:var(--t1);min-height:100vh;transition:background .3s,color .3s}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--brd2);border-radius:3px}
+
+/* ── Header ── */
+.hdr{background:var(--bg2);border-bottom:1px solid var(--brd);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.brand{display:flex;align-items:center;gap:10px}
+.logo{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,var(--orange),var(--red));display:flex;align-items:center;justify-content:center;font-size:15px;box-shadow:0 2px 10px rgba(249,115,22,.25)}
+.brand-title{font-size:15px;font-weight:800;letter-spacing:-.3px}
+.brand-sub{font-size:10px;color:var(--t4)}
+.hdr-right{display:flex;align-items:center;gap:6px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--green);flex-shrink:0}
+
+/* ── Buttons ── */
+.rbtn{padding:5px 12px;border-radius:7px;background:var(--bg4);border:1px solid var(--brd);color:var(--t3);font-size:10px;font-weight:600;font-family:var(--F);cursor:pointer;transition:.2s}
+.rbtn:hover{border-color:var(--brd2);color:var(--t1)}
+
+/* ── Theme toggle ── */
+.theme-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--brd);background:var(--bg4);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:.2s}
+.theme-btn:hover{border-color:var(--brd2)}
+
+/* ── Navigation ── */
+.nav{display:flex;gap:2px;background:var(--bg1);padding:3px;border-radius:9px;border:1px solid var(--brd)}
+.nav-b{padding:6px 16px;border-radius:6px;border:none;cursor:pointer;font-size:11px;font-weight:600;font-family:var(--F);background:transparent;color:var(--t4);transition:.2s;white-space:nowrap}
+.nav-b:hover{color:var(--t3);background:var(--bg3)}
+.nav-b.on{background:linear-gradient(135deg,var(--blue),#2563eb);color:#fff;box-shadow:0 2px 8px rgba(59,130,246,.3)}
+
+/* ── Main ── */
+.main{padding:20px 24px;max-width:1360px;margin:0 auto}
+.hidden{display:none!important}
+
+/* ── KPI Cards ── */
+.gk{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px;margin-bottom:20px}
+.kpi{background:var(--bg2);border-radius:12px;padding:18px 20px;border:1px solid var(--brd);position:relative;overflow:hidden;transition:.25s;animation:fu .4s ease-out both}
+.kpi:hover{border-color:var(--brd2);transform:translateY(-1px);box-shadow:0 4px 20px rgba(0,0,0,.15)}
+.kpi-ac{position:absolute;top:0;left:0;width:3px;height:100%}
+.kpi-lbl{font-size:9px;color:var(--t4);text-transform:uppercase;letter-spacing:1.2px;font-weight:700;margin-bottom:6px;padding-left:10px}
+.kpi-val{font-size:24px;font-weight:900;font-family:var(--M);letter-spacing:-1px;line-height:1;padding-left:10px}
+.kpi-ft{display:flex;align-items:center;gap:8px;margin-top:8px;padding-left:10px;flex-wrap:wrap}
+.kpi-tr{font-size:10px;font-weight:700;font-family:var(--M);padding:2px 6px;border-radius:4px}
+.kpi-tr.up{background:rgba(239,68,68,.12);color:var(--red)}
+.kpi-tr.dn{background:rgba(34,197,94,.12);color:var(--green)}
+.kpi-s{font-size:9px;color:var(--t4)}
+.kpi canvas{margin-top:12px;width:100%!important;height:160px!important}
+@keyframes fu{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Panels ── */
+.pnl{background:var(--bg2);border-radius:12px;border:1px solid var(--brd);overflow:hidden;margin-bottom:14px}
+.pnl-h{padding:14px 20px 10px;display:flex;justify-content:space-between;align-items:center}
+.pnl-t{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--t4)}
+.pnl-b{padding:0 20px 16px}
+
+/* ── Table ── */
+.tw{overflow-x:auto;overflow-y:auto;max-height:500px}
+.tw table{width:100%;border-collapse:separate;border-spacing:0;font-size:11px}
+.tw th{padding:9px 12px;text-align:right;color:var(--t4);font-weight:700;font-size:9px;text-transform:uppercase;letter-spacing:.8px;border-bottom:2px solid var(--brd);position:sticky;top:0;background:var(--bg2);z-index:2}
+.tw th:first-child{text-align:left}
+.tw td{padding:8px 12px;color:var(--t3);border-bottom:1px solid var(--brd);text-align:right;font-family:var(--M);font-size:11px}
+.tw td:first-child{text-align:left;font-family:var(--F);font-weight:600;color:var(--t1)}
+.tw tr:hover td{background:var(--bg3)}
+.ps{color:var(--red)!important}
+.ng{color:var(--green)!important}
+
+/* ── Edit ── */
+.ei{background:var(--bg1);border:1px solid var(--blue);color:var(--t1);padding:3px 6px;border-radius:4px;font-family:var(--M);font-size:11px;width:76px;text-align:right}
+.ei:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 0 2px rgba(6,182,212,.2)}
+.edit-bar{background:var(--bg2);padding:8px 24px;font-size:11px;color:var(--amber);display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--amber);flex-wrap:wrap}
+.edit-bar button{padding:4px 12px;border-radius:6px;border:none;cursor:pointer;font-weight:700;font-size:10px;font-family:var(--F)}
+
+/* ── Modal ── */
+.mo{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:flex;align-items:center;justify-content:center}
+.md{background:var(--bg2);border:1px solid var(--brd2);border-radius:14px;padding:28px;max-width:340px;width:90%}
+.md h3{font-size:16px;font-weight:800;margin-bottom:14px}
+.md input{width:100%;padding:9px 12px;background:var(--bg1);border:1px solid var(--brd);border-radius:8px;color:var(--t1);font-size:13px;margin-bottom:10px}
+.md input:focus{outline:none;border-color:var(--blue)}
+.md .mb{width:100%;padding:9px;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:var(--F);background:linear-gradient(135deg,var(--blue),#2563eb);color:#fff}
+.md .me{color:var(--red);font-size:11px;margin-bottom:8px}
+
+/* ── Sources ── */
+.sg{display:grid;gap:10px}
+.sc{background:var(--bg2);border-radius:12px;padding:16px 20px;border:1px solid var(--brd);border-left-width:3px}
+.sc-n{font-weight:800;font-size:13px}
+.sc-u{font-family:var(--M);font-size:10px;color:var(--t4);margin-top:2px}
+.sc-nt{font-size:11px;color:var(--t3);line-height:1.6;margin-top:8px}
+
+/* ── Mobile ── */
+@media(max-width:700px){
+.main{padding:12px}.hdr{padding:0 12px;height:auto;flex-wrap:wrap;padding:10px 12px;gap:6px}
+.nav{width:100%;justify-content:center;order:3}
+.gk{grid-template-columns:1fr}
+.kpi-val{font-size:20px}
+.nav-b{padding:5px 10px;font-size:10px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- Header -->
+<header class="hdr">
+<div class="brand">
+  <div class="logo">⛽</div>
+  <div><div class="brand-title">Kuro kainų dashboardas</div><div class="brand-sub" id="st">Kraunama...</div></div>
+</div>
+<nav class="nav">
+  <button class="nav-b on" data-t="dash">◉ Dyzelinas</button>
+  <button class="nav-b" data-t="adblue">◧ AdBlue</button>
+  <button class="nav-b" data-t="table">◫ Lentelė</button>
+  <button class="nav-b" data-t="src">◎ Šaltiniai</button>
+</nav>
+<div class="hdr-right">
+  <div class="dot" id="dot"></div>
+  <button class="rbtn" onclick="init()">↻</button>
+  <button class="rbtn" onclick="downloadJSON()">📥 JSON</button>
+  <button class="rbtn" id="eBtn" onclick="toggleEdit()">🔒</button>
+  <button class="theme-btn" id="themeBtn" onclick="toggleTheme()">🌙</button>
+</div>
+</header>
+
+<!-- Edit bar -->
+<div class="edit-bar hidden" id="eBar">
+  ✏️ Redagavimo režimas
+  <button style="background:var(--green);color:#fff" onclick="saveEdits()">💾 Išsaugoti</button>
+  <button style="background:var(--blue);color:#fff" onclick="addRow()">+ Data</button>
+  <button style="background:var(--bg4);color:var(--t3)" onclick="cancelEdit()">Atšaukti</button>
+</div>
+
+<main class="main">
+<!-- Dyzelinas -->
+<section id="tab-dash"><div class="gk" id="dz-cards"></div></section>
+
+<!-- AdBlue -->
+<section id="tab-adblue" class="hidden"><div class="gk" id="ab-cards"></div></section>
+
+<!-- Lentelė -->
+<section id="tab-table" class="hidden">
+  <div class="pnl"><div class="pnl-h"><span class="pnl-t">Visos kainos</span><span class="pnl-t" id="tbl-count"></span></div><div class="tw" id="tbl-wrap"></div></div>
+</section>
+
+<!-- Šaltiniai -->
+<section id="tab-src" class="hidden"><div class="sg" id="src-grid"></div></section>
+</main>
+</div>
+
+<!-- Password modal -->
+<div class="mo hidden" id="pm">
+<div class="md">
+  <h3>🔐 Redagavimas</h3>
+  <div class="me hidden" id="pe">Neteisingas slaptažodis</div>
+  <input type="password" id="pi" placeholder="Slaptažodis..." onkeydown="if(event.key==='Enter')checkPw()">
+  <button class="mb" onclick="checkPw()">Atrakinti</button>
+</div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+// Config
+// ══════════════════════════════════════════════
+const JSON_URL = 'kuro_kainos.json';
+const PASSWORD = 'Kuras';
+let DATA = null, EM = false, charts = {};
+
+// ── Theme ──
+function toggleTheme(){
+  const cur = document.documentElement.getAttribute('data-theme');
+  const next = cur === 'light' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', next);
+  document.getElementById('themeBtn').textContent = next === 'light' ? '☀️' : '🌙';
+  try { localStorage.setItem('theme', next); } catch(_){}
+  // Rebuild charts with new colors
+  rebuildCharts();
+}
+(function(){
+  try {
+    const t = localStorage.getItem('theme');
+    if (t === 'light') {
+      document.documentElement.setAttribute('data-theme', 'light');
+      document.getElementById('themeBtn').textContent = '☀️';
+    }
+  } catch(_){}
+})();
+
+// ── Navigation ──
+document.querySelectorAll('.nav-b').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.nav-b').forEach(x => x.classList.remove('on'));
+  b.classList.add('on');
+  ['dash','adblue','table','src'].forEach(t =>
+    document.getElementById('tab-'+t).classList.toggle('hidden', t !== b.dataset.t));
+  setTimeout(() => Object.values(charts).forEach(c => c.resize()), 50);
+}));
+
+// ══════════════════════════════════════════════
+// Data Loading
+// ══════════════════════════════════════════════
+async function init(){
+  const dot = document.getElementById('dot');
+  const st = document.getElementById('st');
+  dot.style.background = 'var(--amber)';
+  st.textContent = 'Kraunama...';
+  try {
+    const r = await fetch(JSON_URL + '?t=' + Date.now(), {cache:'no-store'});
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    DATA = await r.json();
+    dot.style.background = 'var(--green)';
+    st.textContent = 'Atnaujinta: ' + (DATA.updated || '—');
+    render();
+  } catch(e) {
+    dot.style.background = 'var(--red)';
+    st.textContent = 'Klaida: ' + e.message;
+    // Empty structure
+    DATA = DATA || {updated:'',ck_dz:{dates:[],data:[]},neste_dz:{dates:[],data:[]},ck_ab:{dates:[],data:[]},neste_ab:{dates:[],data:[]},as24_dz:[],as24_ab:[]};
+    render();
+  }
+}
+
+// ══════════════════════════════════════════════
+// Rendering
+// ══════════════════════════════════════════════
+function render(){
+  renderCards('dz-cards', getDieselSeries());
+  renderCards('ab-cards', getAdblueSeries());
+  renderTable();
+  renderSources();
+}
+
+function rebuildCharts(){
+  Object.values(charts).forEach(c => c.destroy());
+  charts = {};
+  render();
+}
+
+function getDieselSeries(){
+  const s = [
+    {id:'ck-dz', title:'CK (Orlen LT)', sub:'Dyzelinas E kl. su RRME · EUR/l be PVM', color:'var(--cyan)', dates:DATA.ck_dz.dates, data:DATA.ck_dz.data, key:'ck_dz'},
+    {id:'neste-dz', title:'Neste', sub:'Diesel Futura · EUR/l be PVM', color:'var(--orange)', dates:DATA.neste_dz.dates, data:DATA.neste_dz.data, key:'neste_dz'},
+  ];
+  if (DATA.as24_dz) DATA.as24_dz.forEach((st,i) => {
+    s.push({id:'as24-dz-'+i, title:'AS24 – '+st.name, sub:flag(st.country)+' '+st.country+' · Dyzelinas · EUR/l be PVM', color:'var(--purple)', dates:st.dates, data:st.data, key:'as24_dz', idx:i});
+  });
+  return s;
+}
+
+function getAdblueSeries(){
+  const s = [
+    {id:'ck-ab', title:'CK (Circle K)', sub:'AdBlue · EUR/l su PVM', color:'var(--teal)', dates:DATA.ck_ab.dates, data:DATA.ck_ab.data, key:'ck_ab'},
+    {id:'neste-ab', title:'Neste', sub:'AdBlue · EUR/l be PVM', color:'var(--amber)', dates:DATA.neste_ab.dates, data:DATA.neste_ab.data, key:'neste_ab'},
+  ];
+  if (DATA.as24_ab) DATA.as24_ab.forEach((co,i) => {
+    s.push({id:'as24-ab-'+i, title:'AS24 – '+co.name, sub:flag(co.code)+' '+co.code+' · AdBlue · EUR/l be PVM', color:'var(--blue)', dates:co.dates, data:co.data, key:'as24_ab', idx:i});
+  });
+  return s;
+}
+
+function flag(c){
+  const f={PL:'🇵🇱',DEU:'🇩🇪',AUT:'🇦🇹',BEL:'🇧🇪',FRA:'🇫🇷',ESP:'🇪🇸',LUX:'🇱🇺',ITA:'🇮🇹',CZE:'🇨🇿',SVN:'🇸🇮',NLD:'🇳🇱',LT:'🇱🇹'};
+  return f[c]||'';
+}
+
+// ── Card with chart ──
+function renderCards(containerId, series){
+  const c = document.getElementById(containerId);
+  c.innerHTML = '';
+  series.forEach((s,si) => {
+    if (!s.dates || !s.dates.length) return;
+    const card = document.createElement('div');
+    card.className = 'kpi';
+    card.style.animationDelay = (si * .05) + 's';
+
+    const last = s.data[s.data.length-1];
+    const prev = s.data.length >= 2 ? s.data[s.data.length-2] : null;
+    const clr = getColor(last, prev);
+    const chg = calcChange(last, prev);
+    const wkChg = calcWeekChange(s.data);
+    const canvasId = 'c-' + s.id;
+
+    card.innerHTML = `
+      <div class="kpi-ac" style="background:${getCSSVar(s.color)}"></div>
+      <div class="kpi-lbl">${s.title}</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:8px">
+        <div>
+          <div class="kpi-val" style="color:${clr}">${last != null ? last.toFixed(4) : '—'} <span style="font-size:12px;font-weight:400;color:var(--t4)">€/l</span></div>
+          <div class="kpi-ft">
+            ${chg.html}
+            <span class="kpi-s">${s.dates[s.dates.length-1] || ''}</span>
+          </div>
+          ${wkChg.html ? '<div class="kpi-ft" style="margin-top:2px">'+wkChg.html+'</div>' : ''}
+        </div>
+        <div style="font-size:9px;color:var(--t5)">${s.sub}</div>
+      </div>
+      <canvas id="${canvasId}" height="160"></canvas>
+    `;
+
+    c.appendChild(card);
+    buildChart(canvasId, s.dates, s.data, s.color);
+  });
+}
+
+function getCSSVar(v){
+  if (v.startsWith('var(')) {
+    const name = v.replace('var(','').replace(')','');
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  }
+  return v;
+}
+
+function getColor(last, prev){
+  if (last == null || prev == null) return 'var(--blue)';
+  if (last < prev) return 'var(--green)';
+  if (last > prev) return 'var(--red)';
+  return 'var(--blue)';
+}
+
+function calcChange(last, prev){
+  if (last == null || prev == null) return {html:''};
+  const diff = last - prev;
+  const pct = prev !== 0 ? ((diff/prev)*100).toFixed(2) : '0';
+  const sign = diff > 0 ? '+' : '';
+  const cls = diff > 0 ? 'up' : diff < 0 ? 'dn' : '';
+  const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '';
+  return {html:`<span class="kpi-tr ${cls}">${arrow} ${sign}${diff.toFixed(4)} (${sign}${pct}%) vs vakar</span>`};
+}
+
+function calcWeekChange(data){
+  if (data.length < 6) return {html:''};
+  const last = data[data.length-1];
+  const week = data.slice(-6,-1);
+  const avg = week.reduce((s,v)=>s+v,0)/week.length;
+  const diff = last - avg;
+  const pct = avg !== 0 ? ((diff/avg)*100).toFixed(2) : '0';
+  const sign = diff > 0 ? '+' : '';
+  const cls = diff > 0 ? 'up' : diff < 0 ? 'dn' : '';
+  return {html:`<span class="kpi-tr ${cls}">${sign}${diff.toFixed(4)} (${sign}${pct}%) vs sav. vid.</span>`};
+}
+
+function buildChart(canvasId, dates, data, colorVar){
+  const color = getCSSVar(colorVar);
+  const gridColor = getCSSVar('var(--brd)');
+  const textColor = getCSSVar('var(--t4)');
+
+  // +3 empty days
+  const extDates = [...dates];
+  const extData = [...data];
+  if (dates.length) {
+    let d = new Date(dates[dates.length-1]);
+    for (let i = 0; i < 3; i++) { d.setDate(d.getDate()+1); extDates.push(d.toISOString().split('T')[0]); extData.push(null); }
+  }
+
+  const valid = data.filter(v => v != null);
+  const mn = Math.min(...valid), mx = Math.max(...valid);
+  const rg = mx - mn || 0.01;
+  const yMin = +(mn - rg * 0.15).toFixed(4);
+
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+
+  const chart = new Chart(ctx.getContext('2d'), {
+    type:'line',
+    data:{
+      labels: extDates.map(d => { const p=d.split('-'); return p[1]+'-'+p[2]; }),
+      datasets:[{
+        data: extData,
+        borderColor: color,
+        backgroundColor: color + '18',
+        borderWidth: 2,
+        pointRadius: 1.5,
+        pointHoverRadius: 5,
+        pointHoverBackgroundColor: color,
+        fill: true,
+        tension: 0.3,
+        spanGaps: false,
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          backgroundColor: getCSSVar('var(--bg3)'),
+          titleColor: getCSSVar('var(--t1)'),
+          bodyColor: getCSSVar('var(--t2)'),
+          borderColor: getCSSVar('var(--brd2)'),
+          borderWidth:1,
+          padding:8,
+          bodyFont:{family:'IBM Plex Mono',size:12},
+          callbacks:{label:c=>c.parsed.y!=null?c.parsed.y.toFixed(4)+' €/l':'—'}
+        }
+      },
+      scales:{
+        x:{ticks:{maxTicksLimit:8,font:{size:9,family:'Outfit'},color:textColor},grid:{display:false}},
+        y:{min:yMin,ticks:{font:{size:9,family:'IBM Plex Mono'},color:textColor,callback:v=>v.toFixed(3)},grid:{color:gridColor}}
+      }
+    }
+  });
+  charts[canvasId] = chart;
+}
+
+// ── Table ──
+function renderTable(){
+  const allDates = new Set();
+  const addD = (d) => d.forEach(x=>allDates.add(x));
+  addD(DATA.ck_dz.dates); addD(DATA.neste_dz.dates); addD(DATA.ck_ab.dates); addD(DATA.neste_ab.dates);
+  if(DATA.as24_dz) DATA.as24_dz.forEach(s=>addD(s.dates));
+  if(DATA.as24_ab) DATA.as24_ab.forEach(s=>addD(s.dates));
+  const dates = [...allDates].sort().reverse();
+  const showDates = dates.slice(0,60);
+
+  const sources = getAllSources();
+  document.getElementById('tbl-count').textContent = dates.length + ' dienų';
+
+  let html = '<table><thead><tr><th style="min-width:90px">Data</th>';
+  sources.forEach(s => html += `<th style="min-width:70px">${s.short}</th>`);
+  html += '</tr></thead><tbody>';
+
+  showDates.forEach(date => {
+    html += `<tr><td>${date}</td>`;
+    sources.forEach(s => {
+      const series = getSeries(s);
+      const idx = series.dates.indexOf(date);
+      const val = idx >= 0 ? series.data[idx] : null;
+      if (EM) {
+        html += `<td><input class="ei" type="text" value="${val!=null?val:''}" data-key="${s.key}" data-idx="${s.idx!=null?s.idx:''}" data-date="${date}"></td>`;
+      } else {
+        html += `<td>${val!=null?val.toFixed(4):'—'}</td>`;
+      }
+    });
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('tbl-wrap').innerHTML = html;
+}
+
+function getAllSources(){
+  const s = [
+    {key:'ck_dz',short:'CK DZ',type:'single'},
+    {key:'neste_dz',short:'Neste DZ',type:'single'},
+    {key:'ck_ab',short:'CK AB',type:'single'},
+    {key:'neste_ab',short:'Neste AB',type:'single'},
+  ];
+  if(DATA.as24_dz) DATA.as24_dz.forEach((st,i)=>s.push({key:'as24_dz',idx:i,short:'DZ '+st.name.substring(0,8),type:'array'}));
+  if(DATA.as24_ab) DATA.as24_ab.forEach((co,i)=>s.push({key:'as24_ab',idx:i,short:'AB '+co.name.substring(0,6),type:'array'}));
+  return s;
+}
+
+function getSeries(src){
+  if(src.type==='single') return DATA[src.key];
+  return DATA[src.key][src.idx];
+}
+
+// ── Sources ──
+function renderSources(){
+  document.getElementById('src-grid').innerHTML = [
+    {n:'Orlen LT (CK)',u:'orlenlietuva.lt — PDF protokolai',c:'var(--cyan)',t:'Dyzelinas E kl. su RRME · Bazinė kaina su akcizu · EUR/1000l → EUR/l · Juodeikių terminalas · Savaitiniai duomenys'},
+    {n:'CK AdBlue',u:'circlek.lt',c:'var(--teal)',t:'AdBlue kaina su PVM EUR/l · Keičiasi retai'},
+    {n:'Neste',u:'neste.lt — Ekstranetas',c:'var(--orange)',t:'Diesel Futura + AdBlue · Sutarties kainos be PVM · Klientas: Delamode Baltics · Lietuva'},
+    {n:'AS24 — Dyzelinas',u:'AS24 portalas — Kaina pagal degalinę',c:'var(--purple)',t:'8 degalinės: Gliwice (PL), Niederzissen (DEU), Kufstein (AUT), Turnhout (BEL), Calais Port (FRA), La Jonquera (ESP), Rodange (LUX), ITA · Suma po nuolaidų be PVM'},
+    {n:'AS24 — AdBlue',u:'AS24 portalas — Kaina pagal šalį',c:'var(--blue)',t:'11 šalių: LUX, CZE, FRA, BEL, ITA, DEU, POL, AUT, ESP, SVN, NLD · Konkreti zona · Suma po nuolaidų be PVM'},
+  ].map(s=>`<div class="sc" style="border-left-color:${getCSSVar(s.c)}"><div class="sc-n">${s.n}</div><div class="sc-u">${s.u}</div><div class="sc-nt">${s.t}</div></div>`).join('') +
+  `<div class="sc" style="border-left-color:var(--t5)"><div class="sc-n">🤖 Automatizacija</div><div class="sc-nt"><strong>GitHub Actions</strong> — kasdien 10:30 LT (darbo dienomis). Python scraperiai → JSON → commit.<br><strong>Redagavimas</strong> — 🔒 → slaptažodis → redaguok → 💾 Išsaugoti (atsisiunčia JSON).</div></div>`;
+}
+
+// ══════════════════════════════════════════════
+// Edit Mode
+// ══════════════════════════════════════════════
+function toggleEdit(){
+  if(EM){cancelEdit();return;}
+  document.getElementById('pm').classList.remove('hidden');
+  document.getElementById('pi').value='';
+  document.getElementById('pe').classList.add('hidden');
+  setTimeout(()=>document.getElementById('pi').focus(),100);
+}
+
+function checkPw(){
+  if(document.getElementById('pi').value===PASSWORD){
+    EM=true;
+    document.getElementById('pm').classList.add('hidden');
+    document.getElementById('eBtn').textContent='🔓';
+    document.getElementById('eBar').classList.remove('hidden');
+    render();
+  }else{
+    document.getElementById('pe').classList.remove('hidden');
+  }
+}
+
+function cancelEdit(){
+  EM=false;
+  document.getElementById('eBtn').textContent='🔒';
+  document.getElementById('eBar').classList.add('hidden');
+  render();
+}
+
+function addRow(){
+  const today = new Date().toISOString().split('T')[0];
+  const dateStr = prompt('Įveskite datą (YYYY-MM-DD):', today);
+  if(!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return;
+
+  getAllSources().forEach(src => {
+    const series = getSeries(src);
+    if(!series.dates.includes(dateStr)){
+      let ins=false;
+      for(let i=0;i<series.dates.length;i++){
+        if(dateStr<series.dates[i]){series.dates.splice(i,0,dateStr);series.data.splice(i,0,null);ins=true;break;}
+      }
+      if(!ins){series.dates.push(dateStr);series.data.push(null);}
+    }
+  });
+  render();
+}
+
+function saveEdits(){
+  // Collect all input values
+  document.querySelectorAll('#tbl-wrap input.ei').forEach(inp=>{
+    const key=inp.dataset.key, idx=inp.dataset.idx, date=inp.dataset.date;
+    const val=inp.value.trim();
+    let series = idx==='' ? DATA[key] : DATA[key][parseInt(idx)];
+    const di = series.dates.indexOf(date);
+
+    if(val===''||val==='null'){
+      if(di>=0) series.data[di]=null;
+    }else{
+      const num=parseFloat(val.replace(',','.'));
+      if(!isNaN(num)){
+        if(di>=0){series.data[di]=num;}
+        else{
+          let ins=false;
+          for(let i=0;i<series.dates.length;i++){
+            if(date<series.dates[i]){series.dates.splice(i,0,date);series.data.splice(i,0,num);ins=true;break;}
+          }
+          if(!ins){series.dates.push(date);series.data.push(num);}
+        }
+      }
+    }
+  });
+
+  DATA.updated = new Date().toISOString().split('T')[0];
+
+  // Download JSON
+  const blob = new Blob([JSON.stringify(DATA,null,2)],{type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'kuro_kainos.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+
+  cancelEdit();
+}
+
+function downloadJSON(){
+  if(!DATA) return;
+  const blob = new Blob([JSON.stringify(DATA,null,2)],{type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'kuro_kainos.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ── Start ──
+init();
+</script>
+</body>
+</html>
