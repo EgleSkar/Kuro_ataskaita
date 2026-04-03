@@ -24,8 +24,7 @@ jobs:
       - name: Idiegti priklausomybes
         run: |
           pip install -r requirements.txt
-          playwright install chromium
-          playwright install-deps
+          playwright install chromium --with-deps
 
       - name: Sukurti cookies direktorija
         run: mkdir -p cookies debug
