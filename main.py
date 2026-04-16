@@ -14,7 +14,7 @@ from json_writer import update_json
 
 def main():
     print("=" * 60)
-    print(f"Kuro kainu surinkimas — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    print(f"Kuro kainu surinkimas - {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     print("=" * 60)
 
     errors = []
@@ -73,7 +73,7 @@ def main():
         for err in errors:
             print(f"   - {err}")
         if ck_diesel is None and neste is None and as24 is None:
-            print("Ispejimas: ne vienas scraperis neveike — tikrinkite debug screenshots!")
+            print("Ispejimas: ne vienas scraperis neveike - tikrinkite debug screenshots!")
     else:
         print("Viskas surinkta sekmingai!")
     print("=" * 60)

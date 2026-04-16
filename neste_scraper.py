@@ -1,46 +1,287 @@
-# ============================================
-# NESTE - pakeisti TIKTAI close_cookies funkciją
-# Sena versija ieškojo tik button elementų
-# Nauja versija ieško BET KOKIO elemento su tekstu
-# ============================================
+"""
+Neste scraperis (Playwright).
+1. Prisijungia prie neste.lt
+2. Eina i "Sutarties kainos ir nuolaidos"
+3. Pasirenka klienta, sali, data
+4. Formuoja ataskaita be PVM
+5. Istraukia Diesel Futura ir AdBlue kainas
+"""
+import json
+import os
+from datetime import datetime, timedelta
+from playwright.async_api import async_playwright
 
-# SENA (neveikianti):
-# for text in ["Necessary cookies only", ...]:
-#     btn = page.locator(f'button:has-text("{text}")')
+import config
 
-# NAUJA (pakeisti į):
-async def close_cookies(page):
-    """Uzdaro cookies popup jei yra."""
+DEBUG_DIR = "debug"
+
+
+def get_report_date():
+    today = datetime.now()
+    weekday = today.weekday()
+    if weekday == 0:
+        report_date = today - timedelta(days=3)
+    else:
+        report_date = today - timedelta(days=1)
+    return report_date.strftime("%d.%m.%Y")
+
+
+async def debug_screenshot(page, name):
+    """Issaugo debug screenshot."""
+    os.makedirs(DEBUG_DIR, exist_ok=True)
+    path = os.path.join(DEBUG_DIR, f"{name}.png")
     try:
-        await page.wait_for_timeout(2000)  # Palaukiam kol popup atsiras
+        await page.screenshot(path=path, full_page=False)
+        print(f"[Neste] Debug screenshot: {path}")
+    except Exception as e:
+        print(f"[Neste] Screenshot klaida: {e}")
 
-        # Neste naudoja OneTrust - bandome kelis selektorius
-        # 1. Tiesiogiai per OneTrust ID
-        onetrust = page.locator('#onetrust-reject-all-handler, #onetrust-accept-btn-handler')
-        if await onetrust.count() > 0:
-            await onetrust.first.click()
-            print("[Neste] Cookies uzdarytas (OneTrust)")
-            await page.wait_for_timeout(1000)
-            return
 
-        # 2. Per teksta - bet koks elementas (ne tik button)
-        for text in ["Necessary cookies only", "Accept All Cookies", "Sutinku", "Priimti", "Reject All"]:
-            btn = page.locator(f'text="{text}"')
+async def close_cookies(page):
+    """Uzdaro cookies popup jei yra. Neste naudoja OneTrust framework."""
+    try:
+        # Laukiame kol atsiras OneTrust banner arba bet koks cookie popup
+        try:
+            await page.wait_for_selector(
+                '#onetrust-banner-sdk, #onetrust-consent-sdk, [class*="cookie"], [id*="cookie"]',
+                timeout=5000,
+            )
+            print("[Neste] Cookie popup aptiktas")
+        except Exception:
+            print("[Neste] Cookie popup nepasirade per 5s, bandome toliau")
+
+        # 1. OneTrust mygtuku ID — patikimiausi
+        for selector in [
+            '#onetrust-accept-btn-handler',
+            '#onetrust-reject-all-handler',
+            '.onetrust-close-btn-handler',
+        ]:
+            btn = page.locator(selector)
             if await btn.count() > 0:
-                await btn.first.click()
+                await btn.first.click(force=True)
+                print(f"[Neste] Cookies uzdarytas: {selector}")
+                await page.wait_for_timeout(1000)
+                return
+
+        # 2. Per teksta — ieskom bet kokio elemento su cookie mygtuko tekstu
+        for text in [
+            "Accept All Cookies",
+            "Necessary cookies only",
+            "Priimti visus slapukus",
+            "Sutinku",
+            "Priimti",
+            "Reject All",
+        ]:
+            btn = page.locator(f'button:has-text("{text}"), a:has-text("{text}"), [role="button"]:has-text("{text}"), div:has-text("{text}")')
+            if await btn.count() > 0:
+                await btn.first.click(force=True)
                 print(f"[Neste] Cookies uzdarytas: '{text}'")
                 await page.wait_for_timeout(1000)
                 return
 
-        # 3. Per role=button su tekstu
-        for text in ["Necessary cookies only", "Accept All Cookies"]:
-            btn = page.locator(f'[role="button"]:has-text("{text}"), a:has-text("{text}"), button:has-text("{text}"), div:has-text("{text}")')
+        # 3. Generic cookie banner uzdarymo mygtukai
+        for selector in [
+            'button[class*="cookie" i][class*="accept" i]',
+            'button[class*="cookie" i][class*="close" i]',
+            '[class*="consent"] button',
+            '[id*="consent"] button',
+        ]:
+            btn = page.locator(selector)
             if await btn.count() > 0:
-                await btn.first.click()
-                print(f"[Neste] Cookies uzdarytas (role): '{text}'")
+                await btn.first.click(force=True)
+                print(f"[Neste] Cookies uzdarytas (generic): {selector}")
                 await page.wait_for_timeout(1000)
                 return
 
-        print("[Neste] Cookies popup nerastas")
+        print("[Neste] Cookies popup nerastas arba jau uzdarytas")
     except Exception as e:
-        print(f"[Neste] Cookies klaida: {e}")
+        print(f"[Neste] Cookies klaida (nekritine): {e}")
+
+
+async def scrape_neste():
+    report_date = get_report_date()
+    print(f"[Neste] Ataskaitos data: {report_date}")
+
+    results = {"diesel": None, "adblue": None, "date": None}
+
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        context = await browser.new_context(
+            viewport={"width": 1280, "height": 800},
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36",
+        )
+        page = await context.new_page()
+
+        try:
+            # -- 1. Einame i prisijungimo puslapi --
+            print(f"[Neste] Einame i {config.NESTE_URL}")
+            await page.goto(config.NESTE_URL, wait_until="networkidle", timeout=60000)
+            await debug_screenshot(page, "01_neste_landing")
+
+            # --- COOKIE HANDLING ---
+            await close_cookies(page)
+            await debug_screenshot(page, "02_neste_after_cookies")
+
+            # Bandome rasti ir paspausti "Prisijungti" (tik matoma nuoroda)
+            prisijungti = page.locator('a:visible:has-text("Prisijungti"), button:visible:has-text("Prisijungti")')
+            count = await prisijungti.count()
+            print(f"[Neste] Rasta matomu 'Prisijungti' elementu: {count}")
+
+            if count > 0:
+                # Nuoroda gali tureti target="_blank" — naviguojam tiesiogiai
+                href = await prisijungti.first.get_attribute("href")
+                if href:
+                    if href.startswith("/"):
+                        href = "https://www.neste.lt" + href
+                    print(f"[Neste] Einame i login: {href}")
+                    await page.goto(href, wait_until="networkidle", timeout=30000)
+                else:
+                    await prisijungti.first.click()
+                    await page.wait_for_load_state("networkidle", timeout=30000)
+                await debug_screenshot(page, "03_neste_login_form")
+
+                # --- 1 zingsnis: Vartotojo vardas (identifier) ---
+                identifier_input = page.locator('input[name="identifier"], input[type="email"], input[type="text"]:visible')
+                id_count = await identifier_input.count()
+                print(f"[Neste] Identifier lauku rasta: {id_count}")
+
+                if id_count > 0:
+                    await identifier_input.first.fill(config.NESTE_EMAIL)
+                    print(f"[Neste] Identifier ivestas")
+
+                    # Spaudziam "Testi" / Submit (Neste naudoja custom <sty-button>)
+                    testi_btn = page.locator('[type="submit"]:visible')
+                    if await testi_btn.count() > 0:
+                        await testi_btn.first.click()
+                        print("[Neste] Paspaustas Submit/Testi")
+                        await page.wait_for_load_state("networkidle", timeout=15000)
+                        await page.wait_for_timeout(2000)
+
+                await debug_screenshot(page, "04_neste_after_identifier")
+
+                # --- 2 zingsnis: Slaptazodis ---
+                pwd_input = page.locator('input[type="password"]:visible')
+                try:
+                    await pwd_input.wait_for(timeout=10000)
+                    print("[Neste] Password laukas atsirado")
+                except Exception:
+                    print("[Neste] Password laukas nepasirade per 10s")
+
+                pwd_count = await pwd_input.count()
+                print(f"[Neste] Password lauku rasta: {pwd_count}")
+                if pwd_count > 0:
+                    await pwd_input.first.fill(config.NESTE_PASSWORD)
+
+                    await debug_screenshot(page, "05_neste_credentials_filled")
+
+                    # Submit password (Neste naudoja custom <sty-button>)
+                    submit = page.locator('[type="submit"]:visible')
+                    submit_count = await submit.count()
+                    print(f"[Neste] Submit mygtuku: {submit_count}")
+                    if submit_count > 0:
+                        await submit.first.click()
+                        await page.wait_for_load_state("networkidle", timeout=30000)
+
+                await debug_screenshot(page, "05_neste_after_login")
+                print(f"[Neste] URL po prisijungimo: {page.url}")
+
+            # -- 2. Navigacija --
+            await page.wait_for_timeout(3000)
+            await debug_screenshot(page, "06_neste_looking_for_menu")
+
+            links = await page.query_selector_all("a")
+            link_texts = []
+            for link in links[:50]:
+                text = (await link.inner_text()).strip()
+                if text and len(text) > 2:
+                    link_texts.append(text)
+            print(f"[Neste] Matomos nuorodos: {link_texts[:20]}")
+
+            # Bandome rasti "Sutarties kainos" arba panasu
+            kainos_link = page.locator('a:has-text("kainos"), a:has-text("Kainos"), a:has-text("Sutarties"), a[href*="kainos"], a[href*="price"]')
+            kainos_count = await kainos_link.count()
+            print(f"[Neste] 'Kainos' nuorodu rasta: {kainos_count}")
+
+            if kainos_count > 0:
+                await kainos_link.first.click()
+                await page.wait_for_load_state("networkidle", timeout=15000)
+                await debug_screenshot(page, "07_neste_kainos_page")
+            else:
+                # Bandome Ekstraneta
+                ekstranetas = page.locator('a:has-text("Ekstranetas"), a:has-text("ekstranetas"), a[href*="extranetas"], a[href*="ekstra"]')
+                ekstra_count = await ekstranetas.count()
+                print(f"[Neste] 'Ekstranetas' nuorodu: {ekstra_count}")
+                if ekstra_count > 0:
+                    await ekstranetas.first.click()
+                    await page.wait_for_load_state("networkidle", timeout=15000)
+                    await debug_screenshot(page, "07_neste_ekstranetas")
+
+                kainos_link2 = page.locator('a:has-text("kainos"), a:has-text("Kainos"), a:has-text("Sutarties")')
+                kainos_count2 = await kainos_link2.count()
+                print(f"[Neste] 'Kainos' nuorodu (2 bandymas): {kainos_count2}")
+                if kainos_count2 > 0:
+                    await kainos_link2.first.click()
+                    await page.wait_for_load_state("networkidle", timeout=15000)
+
+            await debug_screenshot(page, "08_neste_final_state")
+            print(f"[Neste] Galutinis URL: {page.url}")
+
+            # -- 3. Bandome rasti kainas puslapyje --
+            page_text = await page.inner_text("body")
+
+            if "Diesel Futura" in page_text or "diesel" in page_text.lower():
+                print("[Neste] Rastas 'Diesel' tekste!")
+                rows = await page.query_selector_all("tr")
+                for row in rows:
+                    text = await row.inner_text()
+                    if "Diesel Futura" in text:
+                        cells = await row.query_selector_all("td")
+                        for cell in cells:
+                            cell_text = (await cell.inner_text()).strip().replace(",", ".")
+                            try:
+                                val = float(cell_text)
+                                if 0.5 < val < 3.0:
+                                    results["diesel"] = val
+                                    print(f"[Neste] Diesel Futura: {val} EUR/l")
+                                    break
+                            except ValueError:
+                                continue
+
+                    if "AdBlue" in text:
+                        cells = await row.query_selector_all("td")
+                        for cell in cells:
+                            cell_text = (await cell.inner_text()).strip().replace(",", ".")
+                            try:
+                                val = float(cell_text)
+                                if 0.1 < val < 3.0:
+                                    results["adblue"] = val
+                                    print(f"[Neste] AdBlue: {val} EUR/l")
+                                    break
+                            except ValueError:
+                                continue
+
+            date_parts = report_date.split(".")
+            results["date"] = f"{date_parts[2]}-{date_parts[1]}-{date_parts[0]}"
+
+        except Exception as e:
+            print(f"[Neste] Klaida: {e}")
+            await debug_screenshot(page, "99_neste_error")
+            raise
+        finally:
+            await browser.close()
+
+    return results
+
+
+def run_neste_scraper():
+    import asyncio
+    return asyncio.run(scrape_neste())
+
+
+if __name__ == "__main__":
+    print("=== Neste Scraper testas ===")
+    try:
+        result = run_neste_scraper()
+        print(f"Rezultatas: {result}")
+    except Exception as e:
+        print(f"Klaida: {e}")
