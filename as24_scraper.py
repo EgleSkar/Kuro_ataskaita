@@ -121,14 +121,16 @@ async def login_as24(page):
     await debug_screenshot(page, "03_as24_credentials_filled")
     await page.wait_for_timeout(2000)  # reCAPTCHA laiko registruoti veiksmus
 
-    submit = page.locator('button[type="submit"], button:has-text("PRISIJUNGIMAS"), button:has-text("Prisijungimas"), button:has-text("Login")')
-    if await submit.count() > 0:
-        await submit.first.click()
+    # Bandome Enter klavisu (kartais apeja reCAPTCHA geriau nei mygtuko click)
+    pwd_field = page.locator('input[type="password"]:visible')
+    if await pwd_field.count() > 0:
+        await pwd_field.first.press("Enter")
+        print("[AS24] Submit: Enter klavisas slaptazodio lauke")
     else:
-        buttons = page.locator("button:visible")
-        btn_count = await buttons.count()
-        if btn_count > 0:
-            await buttons.last.click()
+        submit = page.locator('button[type="submit"], button:has-text("PRISIJUNGIMAS"), button:has-text("Prisijungimas")')
+        if await submit.count() > 0:
+            await submit.first.click()
+            print("[AS24] Submit: mygtuko paspaudimas")
 
     await page.wait_for_load_state("networkidle", timeout=30000)
     await debug_screenshot(page, "04_as24_after_login")
@@ -357,12 +359,21 @@ async def scrape_as24():
     adblue_results = []
 
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
+        browser = await p.chromium.launch(
+            headless=True,
+            args=[
+                "--disable-blink-features=AutomationControlled",
+                "--disable-dev-shm-usage",
+                "--no-sandbox",
+            ],
+        )
         context = await browser.new_context(
             viewport={"width": 1280, "height": 800},
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36",
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
             accept_downloads=True,
         )
+        # Pasaliname webdriver pozymi — reCAPTCHA jo iesko
+        await context.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
         page = await context.new_page()
 
         try:
