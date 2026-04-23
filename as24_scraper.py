@@ -183,22 +183,44 @@ async def navigate_to_prices(page):
     await page.wait_for_timeout(2000)
     await debug_screenshot(page, "05_as24_dashboard")
 
+    # Isspausdiname visas nuorodas su href kad supratum struktura
     links = await page.query_selector_all("a")
-    for link in links[:30]:
+    for link in links[:40]:
         text = (await link.inner_text()).strip()
+        href = await link.get_attribute("href") or ""
         if text and len(text) > 2:
-            print(f"[AS24] Nuoroda: '{text}'")
+            print(f"[AS24] Nuoroda: '{text}' -> {href}")
 
-    prices_link = page.locator('a:has-text("kainos"), a:has-text("Kainos"), a:has-text("Degalin"), a:has-text("price"), a:has-text("Price")')
-    count = await prices_link.count()
-    print(f"[AS24] Kainos nuorodu: {count}")
+    dashboard_url = page.url
 
-    if count > 0:
-        await prices_link.first.click()
-        await page.wait_for_load_state("networkidle", timeout=15000)
+    # 1. "Mano kainos" — kaire navigacija (specifiskiausias)
+    mano_kainos = page.locator('a:has-text("Mano kainos")')
+    if await mano_kainos.count() > 0:
+        href = await mano_kainos.first.get_attribute("href") or ""
+        print(f"[AS24] Mano kainos href: {href}")
+        if href:
+            base = "/".join(page.url.rstrip("/").split("/")[:3])
+            await page.goto(base + href if href.startswith("/") else href, wait_until="networkidle", timeout=15000)
+        else:
+            await mano_kainos.first.click()
+            await page.wait_for_load_state("networkidle", timeout=15000)
+        await page.wait_for_timeout(2000)
+        print(f"[AS24] URL po 'Mano kainos': {page.url}")
+
+    # Jei URL nepasikete, bandome "Degalines ir kainos" bloka
+    if page.url == dashboard_url:
+        degalines = page.locator('a:has-text("Degalin"), a[href*="station"], a[href*="price"], a[href*="kainos"]')
+        count = await degalines.count()
+        print(f"[AS24] 'Degalines' nuorodu: {count}")
+        if count > 0:
+            href = await degalines.first.get_attribute("href") or ""
+            print(f"[AS24] Degalines href: {href}")
+            await degalines.first.click()
+            await page.wait_for_load_state("networkidle", timeout=15000)
+            await page.wait_for_timeout(2000)
 
     await debug_screenshot(page, "06_as24_prices_page")
-    print(f"[AS24] Kainos URL: {page.url}")
+    print(f"[AS24] Kainos puslapis URL: {page.url}")
 
 
 async def scrape_diesel_station(page, station):

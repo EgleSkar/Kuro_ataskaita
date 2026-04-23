@@ -10,7 +10,7 @@ from bs4 import BeautifulSoup
 import pdfplumber
 import tempfile
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import config
 
@@ -22,107 +22,111 @@ HEADERS = {
 }
 
 
+def build_pdf_url(date):
+    """
+    Sukonstruoja Orlen LT PDF URL pagal data.
+    Pattern: Kainos YYYY MM DD realizacija internet.pdf
+    """
+    base = "https://www.orlenlietuva.lt/LT/Wholesale/Prices/"
+    filename = f"Kainos {date.strftime('%Y %m %d')} realizacija internet.pdf"
+    return base + requests.utils.quote(filename, safe="/")
+
+
 def get_latest_pdf_url():
     """
-    Eina i Orlen LT kainu puslapi ir suranda naujausio PDF nuoroda.
+    Bando rasti naujausio PDF URL pagal data.
+    Pradeda nuo vakar, bandydamas atgal iki 7 dienu (praleidzia savaitgalius).
     """
-    resp = requests.get(config.CK_PDF_URL, headers=HEADERS, timeout=30)
-    resp.raise_for_status()
-    soup = BeautifulSoup(resp.text, "html.parser")
+    today = datetime.now()
+    for days_back in range(1, 8):
+        candidate = today - timedelta(days=days_back)
+        # Praleidzia sekmadieni (6) ir sestadieni (5)
+        if candidate.weekday() >= 5:
+            continue
+        url = build_pdf_url(candidate)
+        print(f"[CK] Bandome PDF: {url}")
+        try:
+            resp = requests.head(url, headers=HEADERS, timeout=10, allow_redirects=True)
+            if resp.status_code == 200:
+                print(f"[CK] PDF rastas: {candidate.strftime('%Y-%m-%d')}")
+                return url, candidate.strftime("%Y-%m-%d")
+        except Exception as e:
+            print(f"[CK] Klaida tikrinant {url}: {e}")
 
-    pdf_links = []
-    for a in soup.find_all("a", href=True):
-        href = a["href"]
-        if href.lower().endswith(".pdf"):
-            if href.startswith("/"):
-                href = "https://www.orlenlietuva.lt" + href
-            elif not href.startswith("http"):
-                href = "https://www.orlenlietuva.lt/" + href
-            pdf_links.append(href)
-
-    if not pdf_links:
-        raise ValueError("Nerasta PDF nuorodu Orlen LT puslapyje")
-
-    # Imame naujiausia (pirma sarase — paprastai naujausi virsuje)
-    return pdf_links[0]
+    raise ValueError("Nepavyko rasti Orlen LT PDF per paskutines 7 dienas")
 
 
 def parse_diesel_from_pdf(pdf_path):
     """
-    Istraukia dyzelino kaina is Orlen LT PDF.
-    Juodeikiu terminalas, "Dyzelinas E kl. su RRME",
-    stulpelis "Bazine kaina su akcizo mokesciu".
+    Istraukia dyzelino kaina is Orlen LT PDF (teksto metodas).
+    Juodeikiu terminalas, "Dyzelinas C kl. su RRME" (arba E kl.),
+    stulpelis "Bazine kaina su akcizo mokesciu" (3-ias skaicius eiluteje).
     Verte EUR/1000l -> konvertuojame i EUR/l.
-    """
-    price = None
-    date_str = None
 
+    Eilutes formatas:
+      Dyzelinas C kl. su RRME 925.71 503.60 1 429.31 300.16 1 729.47
+    Stulpeliai: bazine | akcizas | bazine+akcizas | PVM | su PVM
+    Imame bazine+akcizas (3-ias skaicius).
+    """
     with pdfplumber.open(pdf_path) as pdf:
         for page in pdf.pages:
             text = page.extract_text() or ""
-
-            # Bandome istraukti data is PDF
-            date_match = re.search(r"(\d{4}-\d{2}-\d{2})", text)
-            if date_match and not date_str:
-                date_str = date_match.group(1)
-
-            # Ieskom lenteliu
-            tables = page.extract_tables()
-            if not tables:
+            if not text:
                 continue
 
-            # Pirmas terminalas (Juodeikiu)
-            found_first_terminal = False
-            for table in tables:
-                for row in table:
-                    if not row:
-                        continue
-                    row_text = " ".join(str(cell) for cell in row if cell)
+            lines = text.splitlines()
+            in_juodeikiai = False
 
-                    if "Orlen Lietuva" in row_text and "Juodeiki" in row_text:
-                        found_first_terminal = True
-                        continue
+            for line in lines:
+                # Randame Juodeikiu terminalo sekcija
+                if "Juodeiki" in line:
+                    in_juodeikiai = True
+                    continue
 
-                    if found_first_terminal and any(
-                        t in row_text for t in ["Okseta", "KN Energies", "Subaciaus"]
-                    ):
-                        if price is not None:
-                            break
-
-                    if found_first_terminal and "Dyzelinas" in row_text and "RRME" in row_text:
-                        numbers = []
-                        for cell in row:
-                            if cell is None:
-                                continue
-                            cell_str = str(cell).replace(" ", "").replace("\xa0", "")
-                            try:
-                                numbers.append(float(cell_str.replace(",", ".")))
-                            except ValueError:
-                                continue
-
-                        if len(numbers) >= 3:
-                            price = numbers[2]
-                            break
-
-                if price is not None:
+                # Sekantis terminalas — baigiame
+                if in_juodeikiai and any(t in line for t in ["Okseta", "KN Energies", "Subaciaus", "Klaipeda"]):
                     break
 
-    if price is None:
-        raise ValueError("Nepavyko rasti dyzelino kainos Orlen LT PDF")
+                # Ieskom dyzelino eilutes
+                if in_juodeikiai and "Dyzelinas" in line and "RRME" in line and "kl." in line:
+                    # Isskaiciuojame visus skaicius is eilutes
+                    # Skaiciai gali buti su tarpu kaip tukstanciu skyriklis: "1 429.31"
+                    # Pirma pasaliname produkto pavadinima
+                    name_end = line.find("RRME") + len("RRME")
+                    numbers_part = line[name_end:].strip()
 
-    price_per_liter = round(price / 1000, 6)
+                    # Regex: pirma ieskom "1 000.00" tipo (su tarpo skyriklio),
+                    # tada paprastu "000.00" tipo
+                    numbers = []
+                    remaining = numbers_part
+                    pattern = re.compile(r'(\d{1,3})\s+(\d{3}\.\d+)|(\d+\.\d+)')
+                    for m in pattern.finditer(remaining):
+                        if m.group(1) and m.group(2):
+                            # "1 429.31" tipo
+                            val = float(m.group(1) + m.group(2))
+                        else:
+                            # "925.71" tipo
+                            val = float(m.group(3))
+                        numbers.append(val)
 
-    return {
-        "date": date_str or datetime.now().strftime("%Y-%m-%d"),
-        "price": price_per_liter,
-    }
+                    print(f"[CK] Dyzelino eilute: {line.strip()}")
+                    print(f"[CK] Rasti skaiciai: {numbers}")
+
+                    # 3-ias skaicius = Bazine kaina su akcizo mokesciu (EUR/1000L)
+                    if len(numbers) >= 3:
+                        price_1000l = numbers[2]
+                        price_per_liter = round(price_1000l / 1000, 6)
+                        print(f"[CK] Kaina: {price_1000l} EUR/1000L = {price_per_liter} EUR/L")
+                        return {"date": datetime.now().strftime("%Y-%m-%d"), "price": price_per_liter}
+
+    raise ValueError("Nepavyko rasti dyzelino kainos Orlen LT PDF")
 
 
 def scrape_ck_diesel():
     """
     Pagrindine funkcija — atsisiuncia PDF ir grazina dyzelino kaina.
     """
-    pdf_url = get_latest_pdf_url()
+    pdf_url, pdf_date = get_latest_pdf_url()
     print(f"[CK] Atsisiunchiamas PDF: {pdf_url}")
 
     resp = requests.get(pdf_url, headers=HEADERS, timeout=60)
@@ -134,6 +138,8 @@ def scrape_ck_diesel():
 
     try:
         result = parse_diesel_from_pdf(tmp_path)
+        # Naudojame PDF failo data, o ne is turinio
+        result["date"] = pdf_date
         print(f"[CK] Dyzelinas: {result['price']} EUR/l ({result['date']})")
         return result
     finally:
