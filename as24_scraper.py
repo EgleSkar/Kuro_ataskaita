@@ -98,21 +98,28 @@ async def login_as24(page):
     print(f"[AS24] Matomi input laukai: {input_count}")
 
     if input_count >= 3:
-        await all_inputs.nth(0).fill(config.AS24_CLIENT_ID)
-        await all_inputs.nth(1).fill(config.AS24_EMAIL)
-        await all_inputs.nth(2).fill(config.AS24_PASSWORD)
+        await all_inputs.nth(0).click()
+        await all_inputs.nth(0).type(config.AS24_CLIENT_ID, delay=50)
+        await all_inputs.nth(1).click()
+        await all_inputs.nth(1).type(config.AS24_EMAIL, delay=50)
+        await all_inputs.nth(2).click()
+        await all_inputs.nth(2).type(config.AS24_PASSWORD, delay=50)
     else:
         text_inputs = page.locator('input[type="text"]:visible, input[type="number"]:visible, input:not([type]):visible')
         if await text_inputs.count() > 0:
-            await text_inputs.first.fill(config.AS24_CLIENT_ID)
+            await text_inputs.first.click()
+            await text_inputs.first.type(config.AS24_CLIENT_ID, delay=50)
         email_inputs = page.locator('input[type="email"]:visible, input[type="text"]:visible')
         if await email_inputs.count() > 1:
-            await email_inputs.nth(1).fill(config.AS24_EMAIL)
+            await email_inputs.nth(1).click()
+            await email_inputs.nth(1).type(config.AS24_EMAIL, delay=50)
         pwd_inputs = page.locator('input[type="password"]:visible')
         if await pwd_inputs.count() > 0:
-            await pwd_inputs.first.fill(config.AS24_PASSWORD)
+            await pwd_inputs.first.click()
+            await pwd_inputs.first.type(config.AS24_PASSWORD, delay=50)
 
     await debug_screenshot(page, "03_as24_credentials_filled")
+    await page.wait_for_timeout(2000)  # reCAPTCHA laiko registruoti veiksmus
 
     submit = page.locator('button[type="submit"], button:has-text("PRISIJUNGIMAS"), button:has-text("Prisijungimas"), button:has-text("Login")')
     if await submit.count() > 0:
