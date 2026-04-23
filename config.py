@@ -29,7 +29,7 @@ AS24_DIESEL_STATIONS = [
     {"name": "Turnhout",         "filter": "TURNHOUT",         "country": "BEL"},
     {"name": "Calais Port",      "filter": "CALAIS PORT",      "country": "FRA"},
     {"name": "La Jonquera 1",    "filter": "LA JONQUERA 1",    "country": "ESP"},
-    {"name": "Rodange 2",        "filter": "RODANGE 2",        "country": "LUX"},
+    {"name": "Rodange 2",        "filter": "RODANGE 2",        "export_name": "RODANGE 3", "country": "LUX"},
     {"name": "ITA",              "filter": "ITA",              "country": "ITA"},
 ]
 
