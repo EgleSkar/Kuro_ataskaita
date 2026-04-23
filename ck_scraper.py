@@ -10,9 +10,10 @@ from bs4 import BeautifulSoup
 import pdfplumber
 import tempfile
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 import config
+from lt_holidays import is_lt_working_day
 
 # Bendras User-Agent kad svetaines neblokuotu
 HEADERS = {
@@ -22,38 +23,40 @@ HEADERS = {
 }
 
 
-def build_pdf_url(date):
+def build_pdf_url(d):
     """
     Sukonstruoja Orlen LT PDF URL pagal data.
     Pattern: Kainos YYYY MM DD realizacija internet.pdf
     """
     base = "https://www.orlenlietuva.lt/LT/Wholesale/Prices/"
-    filename = f"Kainos {date.strftime('%Y %m %d')} realizacija internet.pdf"
+    filename = f"Kainos {d.strftime('%Y %m %d')} realizacija internet.pdf"
     return base + requests.utils.quote(filename, safe="/")
 
 
-def get_latest_pdf_url():
-    """
-    Bando rasti naujausio PDF URL pagal data.
-    Pradeda nuo vakar, bandydamas atgal iki 7 dienu (praleidzia savaitgalius).
-    """
-    today = datetime.now()
-    for days_back in range(1, 8):
-        candidate = today - timedelta(days=days_back)
-        # Praleidzia sekmadieni (6) ir sestadieni (5)
-        if candidate.weekday() >= 5:
-            continue
-        url = build_pdf_url(candidate)
-        print(f"[CK] Bandome PDF: {url}")
-        try:
-            resp = requests.head(url, headers=HEADERS, timeout=10, allow_redirects=True)
-            if resp.status_code == 200:
-                print(f"[CK] PDF rastas: {candidate.strftime('%Y-%m-%d')}")
-                return url, candidate.strftime("%Y-%m-%d")
-        except Exception as e:
-            print(f"[CK] Klaida tikrinant {url}: {e}")
+def get_last_working_day():
+    """Grazina paskutine darbo diena (vakar arba anksciau, praleisdama savaitgalius ir LT sventes)."""
+    d = datetime.now().date() - timedelta(days=1)
+    while not is_lt_working_day(d):
+        d -= timedelta(days=1)
+    return d
 
-    raise ValueError("Nepavyko rasti Orlen LT PDF per paskutines 7 dienas")
+
+def get_pdf_url(d_work):
+    """
+    Tikrina ar egzistuoja Orlen LT PDF konkrecia data.
+    Grazina URL jei rastas, None jei nerastas.
+    """
+    url = build_pdf_url(d_work)
+    print(f"[CK] Bandome PDF: {url}")
+    try:
+        resp = requests.head(url, headers=HEADERS, timeout=10, allow_redirects=True)
+        if resp.status_code == 200:
+            print(f"[CK] PDF rastas: {d_work}")
+            return url
+    except Exception as e:
+        print(f"[CK] Klaida tikrinant URL: {e}")
+    print(f"[CK] Protokolas nerastas: {d_work}")
+    return None
 
 
 def parse_diesel_from_pdf(pdf_path):
@@ -124,11 +127,18 @@ def parse_diesel_from_pdf(pdf_path):
 
 def scrape_ck_diesel():
     """
-    Pagrindine funkcija — atsisiuncia PDF ir grazina dyzelino kaina.
+    Pagrindine funkcija — atsisiuncia PDF ir grazina dyzelino kainu sarasa.
+    Grazina sarasa irasu: pagrindinis (protokolo data) + backfill savaitgaliai/sventes.
+    Jei protokolas nerastas — grazina [{"date": ..., "price": None}].
     """
-    pdf_url, pdf_date = get_latest_pdf_url()
-    print(f"[CK] Atsisiunchiamas PDF: {pdf_url}")
+    today = datetime.now().date()
+    d_work = get_last_working_day()
+    pdf_url = get_pdf_url(d_work)
 
+    if pdf_url is None:
+        return [{"date": d_work.strftime("%Y-%m-%d"), "price": None}]
+
+    print(f"[CK] Atsisiunchiamas PDF: {pdf_url}")
     resp = requests.get(pdf_url, headers=HEADERS, timeout=60)
     resp.raise_for_status()
 
@@ -138,12 +148,25 @@ def scrape_ck_diesel():
 
     try:
         result = parse_diesel_from_pdf(tmp_path)
-        # Naudojame PDF failo data, o ne is turinio
-        result["date"] = pdf_date
-        print(f"[CK] Dyzelinas: {result['price']} EUR/l ({result['date']})")
-        return result
+        price = result["price"]
     finally:
         os.unlink(tmp_path)
+
+    entries = [{"date": d_work.strftime("%Y-%m-%d"), "price": price}]
+
+    # Backfill: visos ne darbo dienos tarp d_work+1 ir vakar (imtinai)
+    yesterday = today - timedelta(days=1)
+    d = d_work + timedelta(days=1)
+    while d <= yesterday:
+        if not is_lt_working_day(d):
+            entries.append({"date": d.strftime("%Y-%m-%d"), "price": price})
+        d += timedelta(days=1)
+
+    for e in entries:
+        status = f"{e['price']} EUR/l" if e["price"] is not None else "nerastas"
+        print(f"[CK] Dyzelinas: {status} ({e['date']})")
+
+    return entries
 
 
 def scrape_ck_adblue():

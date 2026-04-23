@@ -72,7 +72,7 @@ def main():
         print(f"Baigta su klaidomis ({len(errors)}):")
         for err in errors:
             print(f"   - {err}")
-        if ck_diesel is None and neste is None and as24 is None:
+        if not ck_diesel and neste is None and as24 is None:
             print("Ispejimas: ne vienas scraperis neveike - tikrinkite debug screenshots!")
     else:
         print("Viskas surinkta sekmingai!")

@@ -25,13 +25,13 @@ def load_existing_data():
     }
 
 
-def add_single_value(series, date_str, value):
+def add_single_value(series, date_str, value, allow_none=False):
     """
     Prideda viena reiksme i serija (dates + data masyvus).
     Jei ta data jau yra — atnaujina reiksme.
-    Jei reiksme None — praleidzia.
+    Jei reiksme None ir allow_none=False — praleidzia.
     """
-    if value is None:
+    if value is None and not allow_none:
         return
 
     if date_str in series["dates"]:
@@ -72,9 +72,11 @@ def update_json(ck_diesel=None, ck_adblue=None, neste=None, as24=None):
     data = load_existing_data()
 
     # -- CK Dyzelinas --
-    if ck_diesel and ck_diesel.get("price"):
-        add_single_value(data["ck_dz"], ck_diesel["date"], ck_diesel["price"])
-        print(f"[JSON] CK Dyzelinas: {ck_diesel['price']} ({ck_diesel['date']})")
+    if ck_diesel:
+        for entry in ck_diesel:
+            add_single_value(data["ck_dz"], entry["date"], entry["price"], allow_none=True)
+            status = f"{entry['price']} EUR/l" if entry["price"] is not None else "protokolas nerastas"
+            print(f"[JSON] CK Dyzelinas: {status} ({entry['date']})")
 
     # -- CK AdBlue --
     if ck_adblue and ck_adblue.get("price"):
