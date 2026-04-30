@@ -66,6 +66,67 @@
     "dates": [],
     "data": []
   },
-  "as24_dz": [],
+  "as24_dz": [
+    {
+      "name": "Niederzissen A61",
+      "dates": [
+        "2026-04-30"
+      ],
+      "data": [
+        1.7429
+      ],
+      "country": "DEU"
+    },
+    {
+      "name": "Autohof Kufstein",
+      "dates": [
+        "2026-04-30"
+      ],
+      "data": [
+        1.5833
+      ],
+      "country": "AUT"
+    },
+    {
+      "name": "Turnhout",
+      "dates": [
+        "2026-04-30"
+      ],
+      "data": [
+        1.5925
+      ],
+      "country": "BEL"
+    },
+    {
+      "name": "Calais Port",
+      "dates": [
+        "2026-04-30"
+      ],
+      "data": [
+        1.8175
+      ],
+      "country": "FRA"
+    },
+    {
+      "name": "La Jonquera 1",
+      "dates": [
+        "2026-04-30"
+      ],
+      "data": [
+        1.4163
+      ],
+      "country": "ESP"
+    },
+    {
+      "name": "ITA",
+      "dates": [
+        "2026-04-30"
+      ],
+      "data": [
+        1.6672
+      ],
+      "country": "ITA"
+    }
+  ],
   "as24_ab": []
 }
