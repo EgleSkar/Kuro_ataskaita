@@ -90,8 +90,9 @@ def scrape_diesel(rows, today):
         found_station = None
 
         for row in rows:
-            product = (row.get("productName") or "").lower()
-            if "gazole" not in product and "diesel" not in product:
+            pid = (row.get("productId") or "")
+            product = (row.get("productName") or "").lower().replace(" ", "")
+            if pid != "03" and "gazole" not in product and "diesel" not in product:
                 continue
 
             station_name = (row.get("stationName") or "").upper()
@@ -142,8 +143,9 @@ def scrape_adblue(rows, today):
         found_price = None
 
         for row in rows:
-            product = (row.get("productName") or "").lower()
-            if "adblue" not in product:
+            pid = (row.get("productId") or "")
+            product = (row.get("productName") or "").lower().replace(" ", "")
+            if pid != "10" and "adblue" not in product:
                 continue
 
             row_country = (row.get("country") or "").upper()

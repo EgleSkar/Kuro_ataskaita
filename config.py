@@ -23,13 +23,13 @@ AS24_PASSWORD = os.getenv("AS24_PASSWORD", "")
 
 # AS24 dyzelino degalines (Kaina pagal degaline -> Suma po nuolaidu be PVM)
 AS24_DIESEL_STATIONS = [
-    {"name": "Gliwice",          "filter": "GLIWICE",          "country": "PL"},
+    {"name": "Gliwice",          "filter": "GLIWICE",          "country": "POL"},
     {"name": "Niederzissen A61", "filter": "NIEDERZISSEN A61", "country": "DEU"},
     {"name": "Autohof Kufstein", "filter": "AUTOHOF KUFSTEIN", "country": "AUT"},
     {"name": "Turnhout",         "filter": "TURNHOUT",         "country": "BEL"},
     {"name": "Calais Port",      "filter": "CALAIS PORT",      "country": "FRA"},
     {"name": "La Jonquera 1",    "filter": "LA JONQUERA 1",    "country": "ESP"},
-    {"name": "Rodange 2",        "filter": "RODANGE 2",        "export_name": "RODANGE 3", "country": "LUX"},
+    {"name": "Rodange 2",        "filter": "RODANGE",          "country": "LUX"},
     {"name": "ITA",              "filter": "ADS ANGIOINA OUEST", "country": "ITA"},
 ]
 
@@ -40,7 +40,7 @@ AS24_ADBLUE_COUNTRIES = [
     {"name": "Prancuzija",    "code": "FRA", "country_filter": "Prancuzija",    "zone": "D"},
     {"name": "Belgija",       "code": "BEL", "country_filter": "Belgija",       "zone": "A"},
     {"name": "Italija",       "code": "ITA", "country_filter": "Italija",       "zone": "A"},
-    {"name": "Vokietija",     "code": "DEU", "country_filter": "Vokietija",     "zone": "S"},
+    {"name": "Vokietija",     "code": "DEU", "country_filter": "Vokietija",     "zone": ""},
     {"name": "Lenkija",       "code": "POL", "country_filter": "Lenkija",       "zone": "A"},
     {"name": "Austrija",      "code": "AUT", "country_filter": "Austrija",      "zone": "A"},
     {"name": "Ispanija",      "code": "ESP", "country_filter": "Ispanija",      "zone": "A"},
