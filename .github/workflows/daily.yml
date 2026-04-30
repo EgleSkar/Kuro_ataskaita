@@ -39,6 +39,7 @@ jobs:
           AS24_EMAIL: ${{ secrets.AS24_EMAIL }}
           AS24_PASSWORD: ${{ secrets.AS24_PASSWORD }}
           AS24_CLIENT_ID: ${{ secrets.AS24_CLIENT_ID }}
+          AS24_STORAGE_STATE: ${{ secrets.AS24_STORAGE_STATE }}
         run: python main.py
         continue-on-error: true
 
