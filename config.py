@@ -16,7 +16,7 @@ NESTE_CLIENT = "Delamode Baltics"
 NESTE_COUNTRY = "Lietuva"
 
 # -- AS24 --
-AS24_URL = os.getenv("AS24_URL", "https://auth.as24.com")
+AS24_URL = os.getenv("AS24_URL", "https://extranet.as24.com/extranet/lt/home")
 AS24_CLIENT_ID = os.getenv("AS24_CLIENT_ID", "688701")
 AS24_EMAIL = os.getenv("AS24_EMAIL", "")
 AS24_PASSWORD = os.getenv("AS24_PASSWORD", "")
@@ -30,7 +30,7 @@ AS24_DIESEL_STATIONS = [
     {"name": "Calais Port",      "filter": "CALAIS PORT",      "country": "FRA"},
     {"name": "La Jonquera 1",    "filter": "LA JONQUERA 1",    "country": "ESP"},
     {"name": "Rodange 2",        "filter": "RODANGE 2",        "export_name": "RODANGE 3", "country": "LUX"},
-    {"name": "ITA",              "filter": "ITA",              "country": "ITA"},
+    {"name": "ITA",              "filter": "ADS ANGIOINA OUEST", "country": "ITA"},
 ]
 
 # AS24 AdBlue salys (Kaina pagal sali -> konkreti zona -> Suma po nuolaidu be PVM)
